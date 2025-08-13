@@ -67,23 +67,23 @@ def configure_schema_version_1(connection_string:str)->None:
     cursor = connection.cursor()
     
     cursor.execute("""
-                   DROP TABLE IF EXISTS Studies;
+                   DROP TABLE IF EXISTS Studies CASCADE;
                    """)
 
     cursor.execute("""
-                   DROP TABLE IF EXISTS StudiesLocationData;
+                   DROP TABLE IF EXISTS StudiesLocationData CASCADE;
                    """)
     
     cursor.execute("""
-                   DROP TABLE IF EXISTS StudiesDirections;
+                   DROP TABLE IF EXISTS StudiesDirections CASCADE;
                    """)
     
     cursor.execute("""
-                   DROP TABLE IF EXISTS DirectionsMovements;
+                   DROP TABLE IF EXISTS DirectionsMovements CASCADE;
                    """)
     
     cursor.execute("""
-                   DROP TABLE IF EXISTS MovementVehicleClasses;
+                   DROP TABLE IF EXISTS MovementVehicleClasses CASCADE;
                    """)
 
     connection.commit()
@@ -105,6 +105,7 @@ def configure_schema_version_1(connection_string:str)->None:
                        latitude DECIMAL,
                        longitude DECIMAL,
                        study_type VARCHAR(20),
+                       segment_type VARCHAR(10),
                        PRIMARY KEY(miovision_id),
                        CONSTRAINT miovision_location
                             FOREIGN KEY(miovision_id)
