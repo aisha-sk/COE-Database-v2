@@ -49,7 +49,111 @@ def create_dummy_table(connection_string:str)->None:
     results = cursor.fetchall()
     print(results)
 
+def configure_schema_version_1(connection_string:str)->None:
+    """
+    Configure the database according to Schema Version 14
+    
+    ### Parameters:
+    1. connection_string : ``str``
+        - The connection string passed into psycopg2 to connect to the database.
+    
+    ### Returns:
+    None
+    
+    ### Effects:
+    Creates the inital configuration of the relations in the hosted database.
+    """
+    connection = psycopg2.connect(connection_string)
+    cursor = connection.cursor()
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS Studies;
+                   """)
+
+    cursor.execute("""
+                   DROP TABLE IF EXISTS StudiesLocationData;
+                   """)
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS StudiesDirections;
+                   """)
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS DirectionsMovements;
+                   """)
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS MovementVehicleClasses;
+                   """)
+
+    connection.commit()
+    
+    cursor.execute("""
+                   CREATE TABLE Studies(
+                       miovision_id INT,
+                       study_name VARCHAR(255),
+                       study_duration DECIMAL,
+                       study_date DATE,
+                       PRIMARY KEY (miovision_id)
+                   );
+                   """)
+
+    cursor.execute("""
+                   CREATE TABLE StudiesLocationData(
+                       miovision_id INT,
+                       location_name VARCHAR(250),
+                       latitude DECIMAL,
+                       longitude DECIMAL,
+                       segment_type VARCHAR(10),
+                       PRIMARY KEY(miovision_id),
+                       CONSTRAINT miovision_location
+                            FOREIGN KEY(miovision_id)
+                                REFERENCES Studies(miovision_id)
+                   );
+                   """)
+
+    cursor.execute("""
+                   CREATE TABLE StudiesDirections(
+                       study_direction_id INT GENERATED ALWAYS AS IDENTITY,
+                       miovision_id INT,
+                       direction_name VARCHAR(20),
+                       PRIMARY KEY(study_direction_id),
+                       CONSTRAINT miovision_directions
+                            FOREIGN KEY(miovision_id)
+                                REFERENCES Studies(miovision_id)
+                   );
+                   """)
+    
+    cursor.execute("""
+                   CREATE TABLE DirectionsMovements(
+                       movement_id INT GENERATED ALWAYS AS IDENTITY,
+                       direction_id INT,
+                       movement_name VARCHAR(10),
+                       PRIMARY KEY(movement_id),
+                       CONSTRAINT directions_movements
+                            FOREIGN KEY(direction_id)
+                                REFERENCES StudiesDirections(study_direction_id)
+                   );
+                   """)
+    
+    cursor.execute("""
+                   CREATE TABLE MovementVehicleClasses(
+                       vehicle_class_id INT GENERATED ALWAYS AS IDENTITY,
+                       movement_id INT,
+                       vehicle_class_name VARCHAR(10),
+                       vehicle_count INT,
+                       PRIMARY KEY(vehicle_class_id),
+                       CONSTRAINT movements_classes
+                            FOREIGN KEY(movement_id)
+                                REFERENCES DirectionsMovements(movement_id)
+                   );
+                   """)
+    
+    connection.commit()
+    
+    
+
 if __name__ == "__main__":
     load_dotenv()
     database_connection_string = os.getenv("DATABASE_URL")
-    create_dummy_table(database_connection_string)
+    configure_schema_version_1(database_connection_string)
