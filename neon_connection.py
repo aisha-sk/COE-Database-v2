@@ -51,7 +51,7 @@ def create_dummy_table(connection_string:str)->None:
 
 def configure_schema_version_1(connection_string:str)->None:
     """
-    Configure the database according to Schema Version 14
+    Configure the database according to Schema Version 1
     
     ### Parameters:
     1. connection_string : ``str``
@@ -152,9 +152,99 @@ def configure_schema_version_1(connection_string:str)->None:
     
     connection.commit()
     
+def configure_schema_version_2(connection_string:str)->None:
+    """
+    Configure the database according to Schema Version 2
     
+    ### Parameters:
+    1. connection_string : ``str``
+        - The connection string passed into psycopg2 to connect to the database.
+    
+    ### Returns:
+    None
+    
+    ### Effects:
+    Creates the inital configuration of the relations in the hosted database.
+    """
+    connection = psycopg2.connect(connection_string)
+    cursor = connection.cursor()
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS Studies CASCADE;
+                   """)
+
+    cursor.execute("""
+                   DROP TABLE IF EXISTS StudiesLocationData CASCADE;
+                   """)
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS StudiesDirections CASCADE;
+                   """)
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS DirectionsMovements CASCADE;
+                   """)
+    
+    cursor.execute("""
+                   DROP TABLE IF EXISTS MovementVehicleClasses CASCADE;
+                   """)
+
+    connection.commit()
+
+    cursor.execute("""
+                   CREATE TABLE Studies(
+                       miovision_id INT,
+                       study_name VARCHAR(255) NOT NULL,
+                       study_duration DECIMAL NOT NULL,
+                       segment_type VARCHAR(15) NOT NULL,
+                       study_type VARCHAR(20) NOT NULL,
+                       location_name VARCHAR(30) NOT NULL,
+                       latitude DECIMAL NOT NULL,
+                       longitude DECIMAL NOT NULL,
+                       project_name VARCHAR(30),
+                       study_date DATE NOT NULL,
+                       PRIMARY KEY (miovision_id)
+                   );
+                   """)
+
+    cursor.execute("""
+                   CREATE TABLE StudiesDirections(
+                       study_direction_id INT GENERATED ALWAYS AS IDENTITY,
+                       miovision_id INT,
+                       direction_name VARCHAR(20) NOT NULL,
+                       PRIMARY KEY(study_direction_id),
+                       CONSTRAINT miovision_directions
+                            FOREIGN KEY(miovision_id)
+                                REFERENCES Studies(miovision_id)
+                   );
+                   """)
+    
+    cursor.execute("""
+                   CREATE TABLE DirectionsMovements(
+                       movement_id INT GENERATED ALWAYS AS IDENTITY,
+                       direction_id INT,
+                       movement_name VARCHAR(10) NOT NULL,
+                       PRIMARY KEY(movement_id),
+                       CONSTRAINT directions_movements
+                            FOREIGN KEY(direction_id)
+                                REFERENCES StudiesDirections(study_direction_id)
+                   );
+                   """)
+
+    cursor.execute("""
+                   CREATE TABLE MovementVehicleClasses(
+                       vehicle_class_id INT GENERATED ALWAYS AS IDENTITY,
+                       movement_id INT,
+                       vehicle_class_name VARCHAR(10) NOT NULL,
+                       vehicle_count INT NOT NULL,
+                       PRIMARY KEY(vehicle_class_id),
+                       CONSTRAINT movements_classes
+                            FOREIGN KEY(movement_id)
+                                REFERENCES DirectionsMovements(movement_id)
+                   );
+                   """)
 
 if __name__ == "__main__":
     load_dotenv()
     database_connection_string = os.getenv("DATABASE_URL")
-    configure_schema_version_1(database_connection_string)
+    configure_schema_version_2(database_connection_string)
