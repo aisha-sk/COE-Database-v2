@@ -104,7 +104,7 @@ def configure_schema_version_1(connection_string:str)->None:
                        location_name VARCHAR(250),
                        latitude DECIMAL,
                        longitude DECIMAL,
-                       segment_type VARCHAR(10),
+                       study_type VARCHAR(20),
                        PRIMARY KEY(miovision_id),
                        CONSTRAINT miovision_location
                             FOREIGN KEY(miovision_id)
