@@ -176,14 +176,14 @@ def configure_schema(connection_string:str)->None:
                        latitude DECIMAL NOT NULL,
                        longitude DECIMAL NOT NULL,
                        project_name VARCHAR(20),
-                       study_date DATETIME NOT NULL,
+                       study_date DATE NOT NULL,
                        PRIMARY KEY(miovision_id)
                    );
                    """)
 
     cursor.execute("""
                    CREATE TABLE direction_types(
-                       id GENERATED ALWAYS AS IDENTITY,
+                       id INTEGER GENERATED ALWAYS AS IDENTITY,
                        direction_name VARCHAR(20) NOT NULL,
                        PRIMARY KEY(id)
                    );
@@ -191,7 +191,7 @@ def configure_schema(connection_string:str)->None:
 
     cursor.execute("""
                    CREATE TABLE movement_types(
-                       id GENERATED ALWAYS AS IDENTITY,
+                       id INTEGER GENERATED ALWAYS AS IDENTITY,
                        movement_name VARCHAR(10) NOT NULL,
                        PRIMARY KEY(id)
                    );
@@ -200,7 +200,7 @@ def configure_schema(connection_string:str)->None:
     
     cursor.execute("""
                    CREATE TABLE vehicle_types(
-                       id GENERATED ALWAYS AS IDENTITY,
+                       id INTEGER GENERATED ALWAYS AS IDENTITY,
                        vehicle_type_name VARCHAR(20) NOT NULL,
                        PRIMARY KEY(id)
                     );
@@ -208,12 +208,12 @@ def configure_schema(connection_string:str)->None:
     
     cursor.execute("""
                    CREATE TABLE studies_directions(
-                       id GENERATED ALWAYS AS IDENTITY,
+                       id INTEGER GENERATED ALWAYS AS IDENTITY,
                        miovision_id INTEGER,
                        direction_type_id INTEGER,
                        PRIMARY KEY(id),
                        CONSTRAINT fk_studies
-                       FORERIGN KEY(miovision_id)
+                       FOREIGN KEY(miovision_id)
                        REFERENCES studies(miovision_id),
                        CONSTRAINT fk_direction_types
                        FOREIGN KEY(direction_type_id)
@@ -223,7 +223,7 @@ def configure_schema(connection_string:str)->None:
     
     cursor.execute("""
                    CREATE TABLE directions_movements(
-                       id GENERATED ALWAYS AS IDENTITY,
+                       id INTEGER GENERATED ALWAYS AS IDENTITY,
                        study_direction_id INTEGER,
                        movement_type_id INTEGER,
                        PRIMARY KEY(id),
@@ -238,7 +238,7 @@ def configure_schema(connection_string:str)->None:
     
     cursor.execute("""
                    CREATE TABLE movement_vehicle_classes(
-                       id GENERATED ALWAYS AS IDENTITY,
+                       id INTEGER GENERATED ALWAYS AS IDENTITY,
                        direction_movement_id INTEGER,
                        vehicle_type_id INTEGER,
                        vehicle_count INTEGER,
@@ -251,7 +251,7 @@ def configure_schema(connection_string:str)->None:
                        REFERENCES vehicle_types(id)
                    );
                    """)
-
+    connection.commit()
 
 
     
