@@ -192,6 +192,7 @@ cython_debug/
 .ruff_cache/
 
 Miovision/
+data/
 
 # PyPI configuration file
 .pypirc
