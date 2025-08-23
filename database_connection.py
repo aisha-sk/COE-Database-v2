@@ -158,7 +158,7 @@ def configure_schema(connection_string:str)->None:
     connection = psycopg2.connect(connection_string)
     cursor = connection.cursor()
     
-    relation_names = ['STUDIES','STUDIES_DIRECTIONS','DIRECTION_TYPES','DIRECTIONS_MOVEMENTS','MOVEMENTS_TYPES','MOVEMENT_VE','VehicleTypes']
+    relation_names = ['STUDIES','STUDIES_DIRECTIONS','DIRECTION_TYPES','DIRECTIONS_MOVEMENTS','movement_types','movement_vehicle_classes','vehicle_types']
     
     for relation in relation_names:
         cursor.execute(f"DROP TABLE IF EXISTS {relation} CASCADE;")
@@ -201,7 +201,7 @@ def configure_schema(connection_string:str)->None:
     cursor.execute("""
                    CREATE TABLE vehicle_types(
                        id INTEGER GENERATED ALWAYS AS IDENTITY,
-                       vehicle_type_name VARCHAR(20) NOT NULL,
+                       vehicle_type_name VARCHAR(100) NOT NULL,
                        PRIMARY KEY(id)
                     );
                    """)
@@ -256,13 +256,13 @@ def configure_schema(connection_string:str)->None:
 
     
 
-def input_data(connection_string:str)->None:
+def input_directions(connection_string:str)->None:
     """
-    Populates the data in accordance with Schema Version 3. Internally inputs data from the provided Miovision datasets. 
+    Populates the directions data from the provided Miovision datasets. 
     
     ### Parameters
     1. connection_string: ``str``
-        - Used to connect to the neon database
+        - Used to connect to the database
     
     ### Returns
     None
@@ -272,8 +272,99 @@ def input_data(connection_string:str)->None:
     """
     connection = psycopg2.connect(connection_string)
     cursors = connection.cursor()
+    
+    directions = ['Northeastbound', 'Westbound', 'Eastbound', 'Southeastbound', 'Northbound', 'Northwestbound', 'Southbound', 'Southwestbound']
+    
+    for direction in directions:
+        cursors.execute(f"""
+                        INSERT INTO direction_types (direction_name)
+                        VALUES ('{direction}');
+                        """)
+        
+        connection.commit()
+        
+    
+def input_vehicle_types(connection_string:str)->None:
+    """
+    Populates the vehicle class tables with the information on all possible types of vehicles. 
+    
+    ### Parameters
+    1. connection_string: ``str``
+        - Used to connect to the database
+    
+    ### Returns
+    Nothing
+    
+    ### Effects
+    Creates corrsponding tuples in the vehicle_types table in the database.
+    """
+    connection = psycopg2.connect(connection_string)
+    cursor = connection.cursor()
+    
+    vehicle_classes = ['Cars', 'Articulated Trucks and Single-Unit Trucks', 
+                        'Buses', 'Pedestrians', 'Light Goods Vehicles', 'Heavy', 
+                        'Bicycles on Road', 'Bicycles on Crosswalk', 'Motorcycles',
+                        'Lights', 'Articulated Trucks', 'Buses and Single-Unit Trucks',
+                        'Bicycles', 'Single-Unit Trucks', 'Lights and Motorcycles', 'Vehicles', 
+                        'Trams and Road Trains', 'Heavy and Lights', 'E-Scooters', 'e-Scooters (Road)']
+    
+    for veh_class in vehicle_classes:
+        cursor.execute(f"""
+                        INSERT INTO vehicle_types (vehicle_type_name)
+                        VALUES ('{veh_class}');
+                        """)
+    
+    connection.commit()
 
+def input_movement_types(connection_string:str)->None:
+    """
+    Input the various movement types in the movement_types table in the database.
+    
+    ### Parameters:
+    1. connection_string: ``str``
+        - The string used for connecting to the database.
+    
+    ### Returns
+    Nothing
+    
+    ### Effects
+    Creates the corresponding utples in the movement_types table in the database.
+    """
+    connection = psycopg2.connect(connection_string)
+    cursor = connection.cursor()
+    
+    movement_types = ['Peds', 'Right', 'Peds CW', 'Hard right',
+                      'Peds CCW', 'Bear right', 'Bear left', 
+                      'Hard left', 'U-Turn', 'Left', 'Thru']
+    
+    for mov_type in movement_types:
+        cursor.execute(f"""
+                       INSERT INTO movement_types (movement_name)
+                       VALUES ('{mov_type}');
+                       """)
+    connection.commit()
+    
+def populate_main_date(connection_string:str)->None:
+    """
+    Internally called the ColumnNames class to populate the studies, studies_directions, directions_movements, and
+    movement_vehicle_classes tables for each study.
+    
+    ### Parameters:
+    1. connection_string: ``str``
+        - String used to connnec to the database
+    
+    ### Returns:
+    Nothing
+    
+    ### Effects:
+    Creates corresponding tuple in the studies, studies_directions, directions_movements, and
+    movement_vehicle_classes tables in the database. 
+    """
+    
 if __name__ == "__main__":
     load_dotenv()
-    database_connection_string = os.getenv("DATABASE_URL")
-    configure_schema(database_connection_string)
+    database_connection_string = os.getenv("LOCAL_DATABASE_URL")
+    configure_schema(connection_string=database_connection_string)
+    input_directions(database_connection_string)
+    input_vehicle_types(database_connection_string)
+    input_movement_types(database_connection_string)

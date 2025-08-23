@@ -190,7 +190,8 @@ cython_debug/
 
 # Ruff stuff:
 .ruff_cache/
-
+gather_names.py
+aggregrate.py
 Miovision/
 data/
 
