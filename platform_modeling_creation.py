@@ -109,6 +109,26 @@ def return_path_distance(edge_info_df:pd.DataFrame,edges:list)->float:
     else:
         edges_information = edge_info_df['length'][edge_info_df['EDGEID'].isin(edges)]
         return edges_information.sum()
+    
+def return_edge_centrality_summation(edges:list[int],edge_information_df:pd.DataFrame)->float:
+    """
+    Given the centrality score listed for all edges in the information data, return a summation for the edges
+    in the list provided.
+    
+    ### Parameters:
+    1. edges: ``list[int]``
+        - List of edges used for filtering the dataframe.
+    2. edge_information_df : ``pandas.DataFrame``
+        - The dataframe object containing information per edge
+    
+    ### Returns
+    The total summed edge_centrality scores for the edges provided.
+    """
+    if len(edges) == 0:
+        return 0
+    else:
+        filtered_subset_indices = edge_information_df['EDGEID'].isin(edges)
+        return edge_information_df['centrality_original'][filtered_subset_indices].sum()
 
 def create_features() -> pd.DataFrame:
     """
@@ -139,6 +159,9 @@ def create_features() -> pd.DataFrame:
     
     # Add the total path distance
     training_paths_df['Total Path Distance'] = training_paths_df.apply(lambda x: return_path_distance(edge_info_df,x['edges_passed']),axis=1)
+    
+    # Add the summed centrality measures
+    training_paths_df['Summed Access Points Centrality'] = training_paths_df.apply(lambda x: return_edge_centrality_summation(x['access_points_edges'],edge_info_df),axis=1)
     
     # Get the occurences of road classes over the path
     road_classes_occurences_over_path_df= training_paths_df.apply(lambda x: return_aggregate_path_road_class_counts(edge_info_df,x['edges_passed'],'Path'),axis=1,result_type='expand')

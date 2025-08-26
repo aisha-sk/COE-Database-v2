@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
+from gather_names import ColumnNames
 
 def create_dummy_table(connection_string:str)->None:
     """
@@ -253,9 +254,6 @@ def configure_schema(connection_string:str)->None:
                    """)
     connection.commit()
 
-
-    
-
 def input_directions(connection_string:str)->None:
     """
     Populates the directions data from the provided Miovision datasets. 
@@ -283,7 +281,6 @@ def input_directions(connection_string:str)->None:
         
         connection.commit()
         
-    
 def input_vehicle_types(connection_string:str)->None:
     """
     Populates the vehicle class tables with the information on all possible types of vehicles. 
@@ -344,7 +341,7 @@ def input_movement_types(connection_string:str)->None:
                        """)
     connection.commit()
     
-def populate_main_date(connection_string:str)->None:
+def populate_main_data(connection_string:str)->None:
     """
     Internally called the ColumnNames class to populate the studies, studies_directions, directions_movements, and
     movement_vehicle_classes tables for each study.
@@ -360,6 +357,10 @@ def populate_main_date(connection_string:str)->None:
     Creates corresponding tuple in the studies, studies_directions, directions_movements, and
     movement_vehicle_classes tables in the database. 
     """
+    connection = psycopg2.connect(database_connection_string)
+    cursor = connection.commit()
+    
+    column_names = ColumnNames(start_year=2010,end_year=2024)
     
 if __name__ == "__main__":
     load_dotenv()
