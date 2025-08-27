@@ -173,7 +173,7 @@ def create_features() -> pd.DataFrame:
     
     final_training_paths_df = pd.concat([training_paths_df,road_classes_occurences_access_points_df,road_classes_occurences_over_path_df],axis=1)
     
-    final_training_paths_df = final_training_paths_df.drop(labels=['source_miovision_id','edges_passed','nodes_passed','target_miovision_id','access_points_edges'],axis=1)
+    final_training_paths_df = final_training_paths_df.drop(labels=['edges_passed','nodes_passed','access_points_edges'],axis=1)
     return final_training_paths_df
     
         

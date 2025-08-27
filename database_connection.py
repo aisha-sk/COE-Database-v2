@@ -1,7 +1,10 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
+import pandas as pd
 from gather_names import ColumnNames
+import datetime
+import tqdm
 
 def create_dummy_table(connection_string:str)->None:
     """
@@ -169,14 +172,13 @@ def configure_schema(connection_string:str)->None:
     cursor.execute("""
                    CREATE TABLE studies(
                        miovision_id INTEGER,
-                       study_name VARCHAR(50) NOT NULL,
+                       study_name VARCHAR(100) NOT NULL,
                        study_duration DECIMAL NOT NULL,
-                       segment_type VARCHAR(10) NOT NULL,
-                       study_type VARCHAR(20) NOT NULL,
-                       location_name VARCHAR(50) NOT NULL,
+                       study_type VARCHAR(100) NOT NULL,
+                       location_name VARCHAR(100) NOT NULL,
                        latitude DECIMAL NOT NULL,
                        longitude DECIMAL NOT NULL,
-                       project_name VARCHAR(20),
+                       project_name VARCHAR(100),
                        study_date DATE NOT NULL,
                        PRIMARY KEY(miovision_id)
                    );
@@ -340,8 +342,101 @@ def input_movement_types(connection_string:str)->None:
                        VALUES ('{mov_type}');
                        """)
     connection.commit()
+
+def get_study_type_miovision_id_tuple(file_path:str)->tuple[str,str]:
+    excel_name_with_file_extension = file_path.split('/')[-1]
+    excel_name = excel_name_with_file_extension.split('.')[0]
+    study_type, miovision_id_string = excel_name.split('-')
+    return (study_type,miovision_id_string)
+
+def input_studies_information(cursor,file_path:str)->int:
+    """
+    Add a tuple to the studies relation using the information provided in the excel file.
     
-def populate_main_data(connection_string:str)->None:
+    ### Parameters
+    1. cursor: An instance of the psycopg2 Cursor class
+        - Used to insert data in the relation.
+    2. file_path : ``str``
+        - File path used to reference the DataFrame containing info.
+        
+    ### Returns
+    The Miovision ID in the form of an integer.
+    
+    ### Effects
+    Creates a tuple in the studies relation. 
+    """ 
+    # Get the summary and volume_df
+    summary_df = pd.read_excel(file_path,sheet_name="Summary",header=None)
+    
+    # Let's start with populating the studies column first. 
+    
+    # Start with the Study_name
+    labels_column = summary_df.columns[0]
+    values_column = summary_df.columns[1]
+    
+    # Get the study type and miovision id
+    study_type, miovision_id_string = get_study_type_miovision_id_tuple(file_path)
+    miovision_id = int(miovision_id_string)
+    
+    # Get the relevant indices
+    study_name_index = summary_df[labels_column] == "Study Name"
+    project_name_index = summary_df[labels_column] == "Project"
+    start_time_index = summary_df[labels_column] == "Start Time"
+    end_time_index = summary_df[labels_column] == "End Time"
+    location_name_index = summary_df[labels_column] == "Location"
+    lat_long_index = summary_df[labels_column] == "Latitude and Longitude"
+    
+    # Get the values for each index
+    study_name : str= summary_df[values_column][study_name_index].tolist()[0]
+    project_name = summary_df[values_column][project_name_index].tolist()[0]
+    start_time : datetime.datetime = summary_df[values_column][start_time_index].tolist()[0]
+    end_time : datetime.datetime = summary_df[values_column][end_time_index].tolist()[0]
+    location_name : str = summary_df[values_column][location_name_index].tolist()[0]
+    lat_long_str : str = summary_df[values_column][lat_long_index].tolist()[0]
+    
+    # Get the values for study_date, study_duration (hrs), lat and long
+    time_difference = end_time - start_time
+    study_duration = time_difference.total_seconds() / 3600
+    study_date = start_time.strftime("%Y-%m-%d")
+    latitude_str,longitude_str = lat_long_str.split(',')
+    latitude = float(latitude_str)
+    longitude = float(longitude_str)
+    
+    # Clean location_name and study_name
+    
+    study_name = study_name.replace("'"," ")
+    
+    if not pd.isna(location_name):
+        location_name = location_name.replace("'"," ")
+    
+    cursor.execute(f"""
+                   INSERT INTO studies (
+                       miovision_id,
+                       study_name,
+                       study_duration,
+                       study_type,
+                       location_name,
+                       latitude,
+                       longitude,
+                       project_name,
+                       study_date
+                   )
+                   VALUES (
+                       {miovision_id},
+                       '{study_name}',
+                       {study_duration},
+                       '{study_type}',
+                       '{location_name}',
+                       {latitude},
+                       {longitude},
+                       '{project_name}',
+                       '{study_date}'
+                   );
+                   """)
+    
+    return miovision_id
+
+def populate_studies_data(connection_string:str)->None:
     """
     Internally called the ColumnNames class to populate the studies, studies_directions, directions_movements, and
     movement_vehicle_classes tables for each study.
@@ -357,15 +452,170 @@ def populate_main_data(connection_string:str)->None:
     Creates corresponding tuple in the studies, studies_directions, directions_movements, and
     movement_vehicle_classes tables in the database. 
     """
-    connection = psycopg2.connect(database_connection_string)
-    cursor = connection.commit()
+    connection = psycopg2.connect(connection_string)
+    cursor = connection.cursor()
     
-    column_names = ColumnNames(start_year=2010,end_year=2024)
+    column_names = ColumnNames(start_year=2010,
+                               end_year=2024,
+                               compute_direction_types=False,
+                               compute_movement_types=False,
+                               compute_vehicle_types=False)
+    files = column_names.get_file_names()
     
+    print("Populating studies relation: ")
+    for file_path in tqdm.tqdm(files):
+        input_studies_information(cursor=cursor,file_path=file_path)
+        connection.commit()
+
+def parse_volume_by_vehicle(total_volume_df:pd.DataFrame,label_column_name:str,movement_col_index:int,vehicles_labels_row_index:int,vehicles_id_mapping:dict[str,int]):
+    vehicle_classes_labels = total_volume_df.loc[vehicles_labels_row_index:total_volume_df.shape[0],label_column_name].tolist()
+    vehicle_classes_volumes = total_volume_df.iloc[vehicles_labels_row_index:total_volume_df.shape[0],movement_col_index].tolist()
+    
+    assert vehicle_classes_labels.__len__() == vehicle_classes_volumes.__len__()
+    
+    vehicle_class_volume_mapping = {}
+    
+    for i in range(0,len(vehicle_classes_labels)):
+        vehicle_class_name = vehicle_classes_labels[i]
+        vehicle_class_volume = vehicle_classes_volumes[i]
+        if vehicle_class_name in vehicles_id_mapping and not pd.isna(vehicle_class_volume):
+            vehicle_class_volume_mapping[vehicle_class_name] = vehicle_class_volume
+        
+    
+    return vehicle_class_volume_mapping
+
+def input_volume(cursor,file_path:str):
+    total_volume_df = pd.read_excel(file_path,sheet_name="Total Volume Class Breakdown",header=None)
+    labels_column = total_volume_df.columns[0]
+    study_type, miovision_id_string = get_study_type_miovision_id_tuple(file_path=file_path)
+    miovision_id = int(miovision_id_string)
+    
+    # Grab index for the rows that contain the directions, movements, and the start point of the labels for vehicle classes
+    directions_row_index = total_volume_df[total_volume_df[labels_column] == 'Direction'].index.tolist()[0]
+    movements_row_index = total_volume_df[total_volume_df[labels_column] == 'Start Time'].index.tolist()[0]
+    vehicle_labels_row_index = total_volume_df[total_volume_df[labels_column] == 'Grand Total'].index.tolist()[0]
+    
+    # Grab the allowable inputs and id for all direction_types, movement_types, and vehicle_class_types
+    
+    cursor.execute("""
+                   SELECT direction_name, id FROM direction_types;
+                   """)
+    
+    direction_types_tuples : list[tuple] = cursor.fetchall()
+    
+    direction_types_id_mapping = {direction_tuple[0] : direction_tuple[1] for direction_tuple in direction_types_tuples}
+    
+    cursor.execute("""
+                   SELECT movement_name, id FROM movement_types;
+                   """)
+    
+    movement_types_tuples : list[tuple] = cursor.fetchall()
+    
+    movement_types_id_mapping = {movement_tuple[0] : movement_tuple[1] for movement_tuple in movement_types_tuples}
+    
+    cursor.execute("""
+                   SELECT vehicle_type_name, id FROM vehicle_types;
+                   """)
+    
+    vehicle_types_tuples : list[tuple] = cursor.fetchall()
+    
+    vehicle_types_id_mapping = {vehicle_tuple[0] : vehicle_tuple[1] for vehicle_tuple in vehicle_types_tuples}
+    
+    # Set the last found direction and default movement name
+    last_found_direction = ""
+    default_movement_name = "Thru" # There are multiple variations within the excel file that represent the thru movement. By default, if a movement value
+                                   # is not in the mapping and is not equal to "App Total", then it represents the Thru movement. 
+    
+    # Iterate thru each cell in the direction and movement rows and check for matches
+    for col_index in range(1,total_volume_df.shape[1]):
+        direction_value = total_volume_df.iloc[directions_row_index,col_index]
+        movement_value = total_volume_df.iloc[movements_row_index,col_index]
+        
+        if movement_value not in movement_types_id_mapping and not movement_value.__contains__("Total"):
+            movement_value = default_movement_name
+        
+        if direction_value in direction_types_id_mapping:
+            last_found_direction = direction_value
+            
+            # Add direction for the study
+            cursor.execute(f"""
+                           INSERT INTO studies_directions (
+                               miovision_id,
+                               direction_type_id
+                           )
+                           VALUES (
+                               {miovision_id},
+                               {direction_types_id_mapping[last_found_direction]}
+                           )
+                           RETURNING id;
+                           """)
+            
+            study_direction_id = cursor.fetchone()[0]
+            
+        if movement_value in movement_types_id_mapping and last_found_direction != "":
+            movement_id = movement_types_id_mapping[movement_value]
+            
+            # Add the movment for the corresponding study_direction
+            cursor.execute(f"""
+                           INSERT INTO directions_movements (
+                               study_direction_id,
+                               movement_type_id
+                           )
+                           VALUES (
+                               {study_direction_id},
+                               {movement_id}
+                           )
+                           RETURNING id;
+                           """)
+            
+            direction_movement_id = cursor.fetchone()[0]
+            
+            vehicles_volumes_mapping = parse_volume_by_vehicle(
+                total_volume_df=total_volume_df,
+                label_column_name=labels_column,
+                movement_col_index=col_index,
+                vehicles_labels_row_index= vehicle_labels_row_index,
+                vehicles_id_mapping=vehicle_types_id_mapping
+            )
+            
+            for name, volume in vehicles_volumes_mapping.items():
+                cursor.execute(f"""
+                               INSERT INTO movement_vehicle_classes (
+                                   direction_movement_id,
+                                   vehicle_type_id,
+                                   vehicle_count
+                               )
+                               VALUES (
+                                   {direction_movement_id},
+                                   {vehicle_types_id_mapping[name]},
+                                   {volume}
+                               );
+                               """)
+    
+
+def populate_volume_data(connection_string:str)->None:
+    connection = psycopg2.connect(connection_string)
+    cursor = connection.cursor()
+    
+    file_information = ColumnNames(start_year=2010,
+                               end_year=2024,
+                               compute_direction_types=False,
+                               compute_movement_types=False,
+                               compute_vehicle_types=False)
+    
+    files = file_information.get_file_names()
+    
+    print("Populating volume data: ")
+    for file_path in tqdm.tqdm(files):
+        input_volume(cursor=cursor,file_path=file_path)
+        connection.commit()    
+
 if __name__ == "__main__":
     load_dotenv()
-    database_connection_string = os.getenv("LOCAL_DATABASE_URL")
+    database_connection_string = os.getenv("DATABASE_URL")
     configure_schema(connection_string=database_connection_string)
     input_directions(database_connection_string)
     input_vehicle_types(database_connection_string)
     input_movement_types(database_connection_string)
+    populate_studies_data(database_connection_string)
+    populate_volume_data(connection_string=database_connection_string)
