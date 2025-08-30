@@ -89,6 +89,31 @@ def return_access_points_edges(node_info_df:pd.DataFrame,edges:list,nodes:list)-
     
     return final_list_access_points
 
+def return_centrality_scores_by_road_class(edge_info_df:pd.DataFrame,edges:list)->dict[str,float]:
+    """
+    Given the information stored in the provided dataframe, aggregate the centrablity scores by each road class
+    provided in the list of edges.
+    
+    ### Parameters
+    1. edge_info_df : ``pandas.DataFrame``
+        - Dataframe object containing information for the edges.
+    2. edges : ``list``
+        - List of edges over which to aggregate the centrality scores by road class
+        
+    ### Returns
+    A dict containing the road classes as keys and the summed centrality scores for each on the given path as keys.
+    """
+    road_class_column = "roadclass"
+    centrality_scores_column = "centrality_original"
+    id_column = "EDGEID"
+    unique_road_classes = edge_info_df[road_class_column].unique()
+    
+    if len(edges) == 0:
+        return {f'Access Point {unique_class} Centrality Scores' : 0 for unique_class in unique_road_classes}
+    else:
+        filtered_df = edge_info_df[edge_info_df[id_column].isin(edges)]
+        aggregate_scores = filtered_df.groupby(road_class_column)[centrality_scores_column].sum()
+        return {f'Access Point {unique_class} Centrality Scores' : aggregate_scores.get(unique_class,0) for unique_class in unique_road_classes}
 def return_path_distance(edge_info_df:pd.DataFrame,edges:list)->float:
     """
     Cross reference the length information in the DataFrame with the edges in the list and summate the total
@@ -151,7 +176,7 @@ def create_features() -> pd.DataFrame:
     
     node_info_df['connected_edges'] = node_info_df['connected_edges'].apply(ast.literal_eval)
     
-    # Add mapping of nodes-to-visited-edges as a new column
+    # Add list of access point edges for each path
     training_paths_df['access_points_edges'] = training_paths_df.apply(lambda x: return_access_points_edges(node_info_df,x['edges_passed'],x['nodes_passed']),axis=1)
 
     # Add the summation of the centrality scores
@@ -161,7 +186,7 @@ def create_features() -> pd.DataFrame:
     training_paths_df['Total Path Distance'] = training_paths_df.apply(lambda x: return_path_distance(edge_info_df,x['edges_passed']),axis=1)
     
     # Add the summed centrality measures
-    training_paths_df['Summed Access Points Centrality'] = training_paths_df.apply(lambda x: return_edge_centrality_summation(x['access_points_edges'],edge_info_df),axis=1)
+    # training_paths_df['Summed Access Points Centrality'] = training_paths_df.apply(lambda x: return_edge_centrality_summation(x['access_points_edges'],edge_info_df),axis=1)
     
     # Get the occurences of road classes over the path
     road_classes_occurences_over_path_df= training_paths_df.apply(lambda x: return_aggregate_path_road_class_counts(edge_info_df,x['edges_passed'],'Path'),axis=1,result_type='expand')
@@ -169,9 +194,13 @@ def create_features() -> pd.DataFrame:
     # Get the occurences of the road classes acting as access points
     road_classes_occurences_access_points_df = training_paths_df.apply(lambda x: return_aggregate_path_road_class_counts(edge_info_df,x['access_points_edges'],'Access Points'),axis=1,result_type='expand')
     
+    # Get the centrality scores across road class for list of edges per path
+    
+    road_classes_centrality_scores_df = training_paths_df.apply(lambda x: return_centrality_scores_by_road_class(edge_info_df,x['access_points_edges']),axis=1,result_type='expand')
+    
     # Create final df
     
-    final_training_paths_df = pd.concat([training_paths_df,road_classes_occurences_access_points_df,road_classes_occurences_over_path_df],axis=1)
+    final_training_paths_df = pd.concat([training_paths_df,road_classes_occurences_access_points_df,road_classes_occurences_over_path_df,road_classes_centrality_scores_df],axis=1,)
     
     final_training_paths_df = final_training_paths_df.drop(labels=['edges_passed','nodes_passed','access_points_edges'],axis=1)
     return final_training_paths_df
