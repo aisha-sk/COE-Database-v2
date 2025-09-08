@@ -36,7 +36,7 @@ def return_aggregate_path_road_class_counts(edges_info_df:pd.DataFrame,edges:lis
     ### Returns
     A ``dict`` object containing road class-count key-value pairs
     """
-    road_class_col_name = 'roadclass'
+    road_class_col_name = 'functional_class'
     unique_road_classes = edges_info_df[road_class_col_name].unique()
     if len(edges) == 0:
         return_dict = {f'{prefix} {road_class}':0 for road_class in unique_road_classes}
@@ -103,7 +103,7 @@ def return_centrality_scores_by_road_class(edge_info_df:pd.DataFrame,edges:list)
     ### Returns
     A dict containing the road classes as keys and the summed centrality scores for each on the given path as keys.
     """
-    road_class_column = "roadclass"
+    road_class_column = "functional_class"
     centrality_scores_column = "centrality_original"
     id_column = "EDGEID"
     unique_road_classes = edge_info_df[road_class_column].unique()
@@ -202,11 +202,11 @@ def create_features() -> pd.DataFrame:
     
     final_training_paths_df = pd.concat([training_paths_df,road_classes_occurences_access_points_df,road_classes_occurences_over_path_df,road_classes_centrality_scores_df],axis=1,)
     
-    final_training_paths_df = final_training_paths_df.drop(labels=['edges_passed','nodes_passed','access_points_edges'],axis=1)
+    final_training_paths_df = final_training_paths_df.drop(labels=['source_miovision_id','target_miovision_id','edges_passed','nodes_passed','access_points_edges'],axis=1)
     return final_training_paths_df
     
         
 if __name__ == "__main__":
     df = create_features()
     
-    df.to_excel('./data/Features.xlsx',index=False)
+    df.to_excel('./data/Features_functional_road_classes.xlsx',index=False)

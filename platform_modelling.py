@@ -100,8 +100,6 @@ def train_dl_model(train_loader:DataLoader,test_loader:DataLoader,hyper_paramete
     
         logging.info(msg=f"Validation MAPE: {validation_mae}, epoch: {i+1}")
 
-
-
 def preprocess_data(data_df : pd.DataFrame)->tuple[np.ndarray,np.ndarray]:
     """
     Given the dataframe, return the target values, and features in a tuple after the application of preprocessing. 
@@ -114,28 +112,15 @@ def preprocess_data(data_df : pd.DataFrame)->tuple[np.ndarray,np.ndarray]:
     Tuple in the form ``(target_ndarray, features_ndarray)``.
     """
     target_ndarray = data_df['target_traffic_count'].to_numpy().reshape(-1,1)
-    standard_scaling_columns = ['source_traffic_count','Summed Centrality', 'Total Path Distance',
-       'Access Points Local', 'Access Points Collector',
-       'Access Points Minor Arterial', 'Access Points Other',
-       'Access Points Major Arterial', 'Path Local', 'Path Collector',
-       'Path Minor Arterial', 'Path Other', 'Path Major Arterial',
-       'Access Point Local Centrality Scores',
-       'Access Point Collector Centrality Scores',
-       'Access Point Minor Arterial Centrality Scores',
-       'Access Point Other Centrality Scores',
-       'Access Point Major Arterial Centrality Scores']
+    features_df = data_df.drop(labels=['target_traffic_count'],axis=1)
     
-    cl_transformer = ColumnTransformer([
-        ("Standard Scaler",StandardScaler(),standard_scaling_columns)
-    ],remainder='drop')
+    standard_scaler = StandardScaler()
     
-    features_ndarray = cl_transformer.fit_transform(data_df)
-    
-    features_ndarray = data_df[standard_scaling_columns].to_numpy()
+    features_ndarray = standard_scaler.fit_transform(features_df)
+
     
     return target_ndarray.astype(np.float32),features_ndarray.astype(np.float32)
     
-
 def train_test_split_df(file_path:str,train_split:float)->tuple[pd.DataFrame,pd.DataFrame]:
     """
     Given the file path, create a DataFrame object and split it into two based on the split threshold, and return the
@@ -159,7 +144,6 @@ def train_test_split_df(file_path:str,train_split:float)->tuple[pd.DataFrame,pd.
     test_data_df = data_df[last_training_index :]
     
     return training_data_df, test_data_df
-    
 
 def return_dataloader(features:np.ndarray,targets:np.ndarray,batch_size:int)->DataLoader:
     dataset = TensorDataset(
