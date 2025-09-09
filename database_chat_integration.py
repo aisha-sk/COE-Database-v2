@@ -1,9 +1,78 @@
 from langchain_deepseek import ChatDeepSeek
 from dotenv import load_dotenv
 from langchain_community.utilities import SQLDatabase
-from langchain_community.agent_toolkits import create_sql_agent
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langgraph.prebuilt import create_react_agent
 import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import pandas as pd
+import time
 
+def generate_query(llm:ChatDeepSeek,database_connection_string:str,prompt:str)->str:
+    """
+    Generate a DML query based on the prompt for the database referenced by the connection string.
+    
+    ### Parameters
+    1. llm: ``ChatDeepSeek``
+        - Deepseek client
+    2. database_connection_string : ``str``
+        - Connection string used to obtain schema for context for the LLM
+    3. prompt: ``str``
+        - Prompt used for sql generation
+    
+    ### Effects
+    Depletes tokens from DeepSeek account
+    
+    ### Returns 
+    DML query in string format
+    """
+    db = SQLDatabase.from_uri(database_uri=database_connection_string)
+    toolkit = SQLDatabaseToolkit(db=db,llm=llm)
+    schema_info = db.get_table_info(db.get_usable_table_names())
+    
+    system_prompt = """
+    You are an agent designed to interact with a SQL database.
+    Given an input question, create a syntactically correct {dialect} query to run.
+
+    Query all revelant columns to the prompt even if the user may not have explicity asked for it.
+   
+    You MUST double check your query before returning it by executing it. When checking the query, always limit
+    the number of rows returned to a maximum of 5 to boost efficieny. However, remove this row limit from the final
+    query that you output unless the uses asked for one. If you get an error while
+    executing a query, rewrite the query and try again.
+
+    DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the
+    database. ALWAYS REMEMBER TO LIMIT QUERIES TO A MAXIMUM OF FIVE RETURNED TUPLES WHEN CHECKING THE QUERY.
+    HOWEVER, REMOVE THIS FROM THE FINAL QUERY UNLESS THE USER SPECIFIED A LIMIT.
+
+    To start you should ALWAYS look at the tables in the database to see what you
+    can query. Do NOT skip this step.
+
+    After testing the query you have written and fixing any issues, return simply the {dialect} query as the final output.
+    
+    THIS IS IMPORTANT. FOR THE FINAL MESSAGE, ONLY RETURN THE QUERY TEXT NOTHING ELSE, NO ADDED REMARKS. DO NOT FORGET THE
+    SEMICOLON AT THE END OF QUERIES.
+    """.format(
+        dialect=db.dialect,
+    )
+
+    
+    agent = create_react_agent(
+        model=llm,
+        tools=toolkit.get_tools(),
+        prompt=system_prompt
+    )
+    
+    response_itr = agent.stream(
+        {"messages": [{"role": "user", "content": prompt}]},
+        stream_mode='values'
+    )
+    
+    list_response = list(response_itr)
+    response_content = list_response[-1]['messages'][-1].content
+    return response_content
+    
 
 def generate_additional_information(llm:ChatDeepSeek,database_connection_string:str,prompt:str)->str:
     """
@@ -54,6 +123,31 @@ def generate_additional_information(llm:ChatDeepSeek,database_connection_string:
     response = llm.invoke(messages)
     
     return response.content
+
+def retrieve_dataframe(query:str,database_connection_string:str)->pd.DataFrame:
+    """
+    Given the query and connection string, return a pandas Dataframe for the resulting output
+    
+    ### Parameters
+    1. query: ``str``
+        - Query to be passed into the database
+    2. database_connection_string: ``str``
+        - Used to connect to the database
+    
+    ### Returns
+    A ``pd.DataFrame`` object
+    """
+    
+    return_dict = None
+    
+    with psycopg2.connect(database_connection_string) as connection:
+        with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(query=query)
+            result_dict = cursor.fetchall()
+            return_dict = result_dict
+            
+    return pd.DataFrame(data=return_dict)
+    
 
 def validate_information_needed_for_prompt(llm:ChatDeepSeek,database_connection_string:str,prompt:str)->bool:
     """
@@ -143,3 +237,14 @@ if __name__ == "__main__":
         print('Prompt deemed inadequate for query generation. Generating suggestions for improvement..')
         response = generate_additional_information(llm=llm,database_connection_string=database_connection_string,prompt=prompt)
         print("Response: ",response)
+    else:
+        print("Generating query")
+        start_time = time.time()
+        response_query = generate_query(llm=llm,database_connection_string=database_connection_string,prompt=prompt)
+        end_time = time.time()
+        print("Time taken: ",end_time-start_time," seconds")
+        df = retrieve_dataframe(query=response_query,database_connection_string=database_connection_string)
+        
+        df.to_excel('Generate File.xlsx',index=False)
+        
+        
