@@ -241,10 +241,11 @@ if __name__ == "__main__":
         print("Generating query")
         start_time = time.time()
         response_query = generate_query(llm=llm,database_connection_string=database_connection_string,prompt=prompt)
+        print(response_query)
         end_time = time.time()
         print("Time taken: ",end_time-start_time," seconds")
         df = retrieve_dataframe(query=response_query,database_connection_string=database_connection_string)
         
-        df.to_excel('Generate File.xlsx',index=False)
+        df.to_excel('Generated File.xlsx',index=False)
         
         
