@@ -1,11 +1,59 @@
 from langchain_deepseek import ChatDeepSeek
 from dotenv import load_dotenv
 from langchain_community.utilities import SQLDatabase
-from langgraph.prebuilt import create_react_agent
-from langgraph.graph.state import CompiledStateGraph
-from langchain_community.agent_toolkits import SQLDatabaseToolkit, create_sql_agent
+from langchain_community.agent_toolkits import create_sql_agent
 import os
 
+
+def generate_additional_information(llm:ChatDeepSeek,database_connection_string:str,prompt:str)->str:
+    """
+    Given the prompt, use an LLM agent to provide the minimum additional information that would be needed to generate
+    a query from the database.
+    
+    ### Parameters
+    1. llm:``langchain_deepseek.ChatDeepSeek``
+        - Used to send the request
+    2. database_connection: ``str``
+        - Connection string needed to connect to the database.
+    3. prompt: ``str``
+        - The prompt to be tested
+     
+    ### Effects
+    Internally makes a call to the LLM and depletes tokens
+    
+    ### Returns
+    ``str`` message that contains the minimum additional information needed to generate information from the database. 
+    """
+    db = SQLDatabase.from_uri(database_connection_string)
+    schema_info = db.get_table_info(db.get_usable_table_names())
+    
+    system_prompt = """You are an agent designed to interact with a SQL database.
+        The database information is this:
+        
+        {db_info}
+
+        Given an input prompt, output the minimum additional information that would be needed to generate a {dialect} query for the given schema.
+        
+        After examining the schema, respond with the information.
+        """.format(
+            db_info=schema_info,
+            dialect=db.dialect
+        )
+    
+    messages = [
+        (
+            'system',
+            system_prompt
+        ),
+        (
+            'human',
+            prompt
+        )
+    ]
+    
+    response = llm.invoke(messages)
+    
+    return response.content
 
 def validate_information_needed_for_prompt(llm:ChatDeepSeek,database_connection_string:str,prompt:str)->bool:
     """
@@ -89,4 +137,9 @@ if __name__ == "__main__":
     print("Prompt:")
     prompt = input()
     
-    validate_information_needed_for_prompt(llm=llm,database_connection_string=database_connection_string,prompt=prompt)
+    
+    
+    if not validate_information_needed_for_prompt(llm=llm,database_connection_string=database_connection_string,prompt=prompt):
+        print('Prompt deemed inadequate for query generation. Generating suggestions for improvement..')
+        response = generate_additional_information(llm=llm,database_connection_string=database_connection_string,prompt=prompt)
+        print("Response: ",response)
