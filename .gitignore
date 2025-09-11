@@ -194,6 +194,7 @@ gather_names.py
 aggregrate.py
 Miovision/
 data/
+*.xlsx
 
 # PyPI configuration file
 .pypirc
