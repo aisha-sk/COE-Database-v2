@@ -140,6 +140,13 @@ def retrieve_dataframe(query:str,database_connection_string:str)->pd.DataFrame:
     
     return_dict = None
     
+    # Clean query just in case extra text was left in by the LLM
+    expected_first_clause = "SELECT"
+    
+    expected_start_index = query.index(expected_first_clause)
+    
+    query = query[expected_start_index:]
+    
     with psycopg2.connect(database_connection_string) as connection:
         with connection.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(query=query)
