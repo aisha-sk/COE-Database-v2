@@ -1,6 +1,10 @@
 from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
+from database_chat import SQLAgent
 
+class PromptBody(BaseModel):
+    prompt: str
+    stage: int
 
 def configure_api_router(router:APIRouter)->APIRouter:
     """
@@ -9,6 +13,12 @@ def configure_api_router(router:APIRouter)->APIRouter:
     @router.get('/')
     def sanity_check():
         return {"Message":"Connection Works"}
+    
+    
+
+    @router.post('/')
+    def post_hander(request_body:PromptBody):
+        print(request_body.prompt,request_body.stage)
     
     return router
     
