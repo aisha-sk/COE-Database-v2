@@ -63,15 +63,15 @@ class SQLAgent:
             prompt=prompt
         )
     
-    def return_dataframe(self,prompt:str)->pd.DataFrame:
+    def generate_query(self,prompt:str)->str:
         """
-        Given the prompt, internally, generate a query internally, access the database, and return a DataFrame.
+        Given the prompt, internally, generate a query internally and return it.
         
         ### Parameters
         1. prompt : ``str``
             - Prompt to be used generating the query.
         ### Returns
-        A ``pd.DataFrame`` object
+        A ``str`` object containing the query.
         """
         query = self.__generate_query(
             llm=self.llm,
@@ -79,8 +79,27 @@ class SQLAgent:
             prompt=prompt
         )
         
+        # Clean query just in case extra text was left in by the LLM
+        expected_first_clause = "SELECT"
+        
+        expected_start_index = query.index(expected_first_clause)
+        
+        query = query[expected_start_index:]
+        
+        return query
+    
+    def return_dataframe(self,prompt:str)->pd.DataFrame:
+        """
+        Given the prompt, treat it as a query, access the database, and return a DataFrame.
+        
+        ### Parameters
+        1. prompt : ``str``
+            - Prompt to be used generating the query.
+        ### Returns
+        A ``pd.DataFrame`` object
+        """        
         return self.__retrieve_dataframe(
-            query=query,
+            query=prompt,
             database_connection_string=self.database_connection_string
         )
     
@@ -214,13 +233,6 @@ class SQLAgent:
         """
         
         return_dict = None
-        
-        # Clean query just in case extra text was left in by the LLM
-        expected_first_clause = "SELECT"
-        
-        expected_start_index = query.index(expected_first_clause)
-        
-        query = query[expected_start_index:]
         
         with psycopg2.connect(database_connection_string) as connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
