@@ -3,6 +3,11 @@ import requests
 import time
 from io import BytesIO
 import pandas as pd
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+api_endpoint = os.getenv('SERVER_ENDPOINT')
 
 # Set up variables
 st.title(":blue[City of Edmonton] Traffic Volume Chat")
@@ -39,7 +44,7 @@ if st.session_state.saved_prompt and st.session_state.processing_request:
     with st.chat_message("ai"):
         with st.spinner("Validating Prompt...",show_time=True):
             response = requests.post(
-                url="http://127.0.0.1:8000/validate",
+                url=f"{api_endpoint}/validate",
                 json={
                     "prompt":st.session_state.saved_prompt
                 }
@@ -55,7 +60,7 @@ if st.session_state.saved_prompt and st.session_state.processing_request:
         with st.chat_message("assistant"):
             with st.spinner("Generating suggestions for improvement...",show_time=True):
                 response = requests.post(
-                    url="http://127.0.0.1:8000/suggestion",
+                    url=f"{api_endpoint}/suggestion",
                     json={
                         "prompt":st.session_state.saved_prompt
                     }
@@ -70,7 +75,7 @@ if st.session_state.saved_prompt and st.session_state.processing_request:
             with st.spinner(text="Generating SQL Query... (Exp. Time ~ 80-140s)",show_time=True):
                 start_time = time.time()
                 response = requests.post(
-                    url="http://127.0.0.1:8000/query",
+                    url=f"{api_endpoint}/query",
                     json={
                         "prompt":st.session_state.saved_prompt
                     }
@@ -85,7 +90,7 @@ if st.session_state.saved_prompt and st.session_state.processing_request:
         with st.chat_message("assistant"):
             with st.spinner(text="Aggregating data into Excel format...",show_time=True):
                 response = requests.post(
-                    url="http://127.0.0.1:8000/excel_file",
+                    url=f"{api_endpoint}/excel_file",
                     json={
                         "prompt":query
                     }
