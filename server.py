@@ -71,5 +71,5 @@ if __name__ == "__main__":
     router = configure_api_router(APIRouter(),agent)
     app.include_router(router=router)
     
-    import uvicorn
-    uvicorn.run(app,host="0.0.0.0",port=8000)
+    # import uvicorn
+    # uvicorn.run(app,host="0.0.0.0",port=8000)
