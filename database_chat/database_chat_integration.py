@@ -17,7 +17,7 @@ class SQLAgent:
         
         api_key = os.getenv("LLM_API_KEY")
         base_url = os.getenv("LLM_BASE_URL")
-        self.database_connection_string = os.getenv("LOCAL_DATABASE_URL")
+        self.database_connection_string = os.getenv("DATABASE_URL")
         
         self.llm = ChatDeepSeek(
             model="deepseek-chat",
