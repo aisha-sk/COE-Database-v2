@@ -18,6 +18,9 @@ class SuggestionsResponse(BaseModel):
 class QueryResponse(BaseModel):
     query:str
 
+class ErrorResponse(BaseModel):
+    error:str
+
 def configure_api_router(router:APIRouter,agent:SQLAgent)->APIRouter:
     """
     Given the router, configure paths
@@ -31,10 +34,15 @@ def configure_api_router(router:APIRouter,agent:SQLAgent)->APIRouter:
     @router.post('/validate')
     def post_hander(request_body:RequestBody):
         
-        is_valid = agent.validate_prompt_adequacy(request_body.prompt)
-        response = ValidationResponse(is_valid=is_valid)
-        jsonable_response = jsonable_encoder(response)
-        return JSONResponse(content=jsonable_response)
+        try:
+            is_valid = agent.validate_prompt_adequacy(request_body.prompt)
+            response = ValidationResponse(is_valid=is_valid)
+            jsonable_response = jsonable_encoder(response)
+            return JSONResponse(content=jsonable_response)
+        except Exception as e:
+            error_response = ErrorResponse(error=str(e.args))
+            jsonable_response = jsonable_encoder(error_response)
+            return JSONResponse(content=jsonable_response)
     
     @router.post('/suggestion')
     def post_handler(request_body:RequestBody):
