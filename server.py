@@ -64,9 +64,12 @@ def configure_api_router(router:APIRouter,agent:SQLAgent)->APIRouter:
         return Response(content=excel_buffer.getvalue(),headers=headers,media_type=media_type)
     
     return router
-    
-agent = SQLAgent()
-app = FastAPI()
-router = configure_api_router(APIRouter(),agent)
 
-app.include_router(router=router)
+if __name__ == "__main__":
+    agent = SQLAgent()
+    app = FastAPI()
+    router = configure_api_router(APIRouter(),agent)
+    app.include_router(router=router)
+    
+    import uvicorn
+    uvicorn.run(app,host="0.0.0.0",port=8000)
