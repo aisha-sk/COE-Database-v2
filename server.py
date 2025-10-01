@@ -72,7 +72,7 @@ def configure_api_router(router:APIRouter,agent:SQLAgent)->APIRouter:
             media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             return Response(content=excel_buffer.getvalue(),headers=headers,media_type=media_type)
         except Exception as e:
-            return JSONResponse(status_code=500,content={"Error":e})
+            return JSONResponse(status_code=200,content={"Error":e})
     
     return router
 
