@@ -60,16 +60,19 @@ def configure_api_router(router:APIRouter,agent:SQLAgent)->APIRouter:
     
     @router.post('/excel_file')
     def post_handler(request_body:RequestBody):
-        df = agent.return_dataframe(request_body.prompt)
-        excel_buffer = BytesIO()
-        
-        with pd.ExcelWriter(path=excel_buffer) as writer:
-            df.to_excel(writer,index=False)
-        
-        excel_buffer.seek(0)
-        headers = {'Content-Disposition': 'attachment; filename="Book.xlsx"'}
-        media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        return Response(content=excel_buffer.getvalue(),headers=headers,media_type=media_type)
+        try:
+            df = agent.return_dataframe(request_body.prompt)
+            excel_buffer = BytesIO()
+            
+            with pd.ExcelWriter(path=excel_buffer) as writer:
+                df.to_excel(writer,index=False)
+            
+            excel_buffer.seek(0)
+            headers = {'Content-Disposition': 'attachment; filename="Book.xlsx"'}
+            media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            return Response(content=excel_buffer.getvalue(),headers=headers,media_type=media_type)
+        except Exception as e:
+            return JSONResponse(status_code=500,content={"Error":e})
     
     return router
 
