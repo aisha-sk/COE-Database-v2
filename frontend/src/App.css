@@ -139,10 +139,18 @@
   min-height: calc(100vh - var(--nav-height) - var(--footer-height));
 }
 
-.map-layer-card {
+.map-controls {
   position: absolute;
   top: 1.5rem;
   left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 1000;
+}
+
+.map-layer-card,
+.map-filter-card {
   background-color: #ffffff;
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
@@ -153,7 +161,8 @@
   gap: 0.75rem;
 }
 
-.map-layer-card h3 {
+.map-layer-card h3,
+.map-filter-card h3 {
   margin: 0;
   font-size: 1rem;
   color: #1f2937;
@@ -175,6 +184,63 @@
 
 .map-layer-option input {
   accent-color: var(--brand-blue);
+}
+
+.map-filter-card {
+  gap: 1rem;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.filter-input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.filter-button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--brand-blue);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.filter-button:disabled {
+  background-color: rgba(59, 130, 246, 0.6);
+  cursor: not-allowed;
+}
+
+.filter-button:not(:disabled):hover {
+  background-color: #2563eb;
+}
+
+.filter-error,
+.filter-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ef4444;
+}
+
+.filter-empty {
+  color: #6b7280;
 }
 
 .map-placeholder {

@@ -5,6 +5,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 from io import BytesIO
 import pandas as pd
+from query_routes import router as query_router
 
 class RequestBody(BaseModel):
     prompt: str
@@ -78,7 +79,20 @@ def configure_api_router(router:APIRouter,agent:SQLAgent)->APIRouter:
     
     return router
 
+
+
 agent = SQLAgent()
 app = FastAPI()
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # Frontend origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 router = configure_api_router(APIRouter(),agent)
 app.include_router(router=router)
+app.include_router(query_router)
