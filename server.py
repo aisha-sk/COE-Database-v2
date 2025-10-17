@@ -1,4 +1,5 @@
 from fastapi import APIRouter, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database_chat import SQLAgent
 from fastapi.encoders import jsonable_encoder
@@ -83,7 +84,6 @@ def configure_api_router(router:APIRouter,agent:SQLAgent)->APIRouter:
 
 agent = SQLAgent()
 app = FastAPI()
-from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
@@ -96,3 +96,41 @@ app.add_middleware(
 router = configure_api_router(APIRouter(),agent)
 app.include_router(router=router)
 app.include_router(query_router)
+
+
+@app.get("/geojson/mv_points_snapped")
+def get_mv_points():
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [-113.4938, 53.5461]},
+                "properties": {"id": "MV-001"},
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [-113.4903, 53.5444]},
+                "properties": {"id": "MV-002"},
+            },
+        ],
+    }
+
+
+@app.get("/geojson/estimation_points_snapped")
+def get_estimation_points():
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [-113.4970, 53.5500]},
+                "properties": {"id": "EST-001"},
+            },
+            {
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [-113.4650, 53.5510]},
+                "properties": {"id": "EST-002"},
+            },
+        ],
+    }

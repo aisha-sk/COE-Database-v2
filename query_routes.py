@@ -48,6 +48,8 @@ def get_studies(
                 "id": row["id"],
                 "year": int(row["year"]),
                 "direction": row["direction"],
+                "lat": lat,
+                "lon": lon,
             },
             "geometry": {
                 "type": "Point",
